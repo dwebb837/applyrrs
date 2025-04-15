@@ -29,6 +29,18 @@ app.get('/api/jobs', async (req, res) => {
     }
 });
 
+app.post('/api/applications', async (req, res) => {
+    try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log('Application received:', req.body);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Application failed:', error);
+        res.status(500).json({ error: 'Application failed' });
+    }
+});
+
+
 app.listen(PORT, () => {
     console.log(`Backend server running at http://localhost:${PORT}`);
 });
