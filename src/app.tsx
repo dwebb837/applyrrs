@@ -1,6 +1,6 @@
+import { useEffect } from 'preact/hooks';
 import { useJobStore } from './stores/jobStore';
 import './App.css';
-import { useEffect } from 'preact/hooks';
 
 export function App() {
   const {
@@ -11,16 +11,18 @@ export function App() {
     loading,
     error,
     history,
+    appliedJobIds,
     actions
   } = useJobStore();
-
-  useEffect(() => {
-    actions.fetchJobs();
-  }, [page]);
 
   const currentHistoryIndex = selectedJob ? history.indexOf(selectedJob.id) : -1;
   const canGoBack = currentHistoryIndex > 0;
   const canGoForward = currentHistoryIndex < history.length - 1;
+  const isApplied = selectedJob ? appliedJobIds.includes(selectedJob.id) : false;
+
+  useEffect(() => {
+    actions.fetchJobs();
+  }, [page]);
 
   return (
     <div class="container">
@@ -53,6 +55,9 @@ export function App() {
             >
               <p>{job.roleTitle}</p>
               <p>{job.company.name}</p>
+              {appliedJobIds.includes(selectedJob?.id || '') && (
+                <div class="applied-badge">✓ Applied</div>
+              )}
             </li>
           ))}
         </ul>
@@ -114,9 +119,23 @@ export function App() {
                 {selectedJob.company.linkedInURL || 'N/A'}
               </a>
             </p>
-            <a href={selectedJob.url} target="_blank" rel="noopener noreferrer">
-              <button class="apply-btn">Apply Now</button>
+            <a href={selectedJob.url} target="_blank" rel="noopener noreferrer" class="job-url">
+              <button class={`apply-btn ${isApplied ? 'applied' : ''}`}>
+                {isApplied ? '✓ Applied - Visit Job Page' : 'Go to Application Page'}
+              </button>
             </a>
+
+            {!isApplied && (
+              <button
+                class="mark-applied-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  actions.applyToJob(selectedJob.id);
+                }}
+              >
+                Mark as Applied
+              </button>
+            )}
           </div>
         ) : (
           <div class="no-selection">

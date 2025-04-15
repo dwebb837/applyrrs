@@ -37,11 +37,13 @@ interface JobState {
     loading: boolean;
     error: string;
     history: string[];
+    appliedJobIds: string[];
     actions: {
         fetchJobs: () => Promise<void>;
         setPage: (page: number) => void;
         selectJob: (job: Job) => void;
         navigateHistory: (direction: 'back' | 'forward') => void;
+        applyToJob: (jobId: string) => Promise<void>;
     };
 }
 
@@ -57,9 +59,11 @@ export const useJobStore = create<JobState>()(
             loading: false,
             error: '',
             history: [],
+            appliedJobIds: [],
 
             actions: {
                 fetchJobs: async () => {
+                    const currentPage = get().page;
                     set(state => {
                         state.loading = true;
                         state.error = '';
@@ -83,7 +87,7 @@ export const useJobStore = create<JobState>()(
                             industriesFilters: [],
                             excludeIndustriesFilters: [],
                             companyIdFilter: null,
-                            page: get().page,
+                            page: currentPage,
                             itemsPerPage: ITEMS_PER_PAGE,
                             sortBy: 'DateAdded',
                             showOnlySavedJobs: false,
@@ -102,7 +106,6 @@ export const useJobStore = create<JobState>()(
                         set(state => {
                             state.jobs = response.data.jobOpenings;
                             state.totalPages = Math.ceil(response.data.totalCount / ITEMS_PER_PAGE);
-                            state.selectedJob = null;
                             state.loading = false;
                         });
                     } catch (error) {
@@ -126,7 +129,6 @@ export const useJobStore = create<JobState>()(
                         state.selectedJob = job;
                         if (!state.history.includes(job.id)) {
                             state.history.push(job.id);
-                            // Keep only last 50 entries
                             if (state.history.length > 50) state.history.shift();
                         }
                     });
@@ -145,6 +147,27 @@ export const useJobStore = create<JobState>()(
                             state.selectedJob = state.jobs.find(j => j.id === newJobId) || null;
                         }
                     });
+                },
+
+                applyToJob: async (jobId) => {
+                    try {
+                        set(state => {
+                            if (!state.appliedJobIds.includes(jobId)) {
+                                state.appliedJobIds.push(jobId);
+                            }
+                        });
+
+                        await axios.post(`http://localhost:3010/api/applications`, {
+                            jobId,
+                            timestamp: new Date().toISOString()
+                        });
+
+                    } catch (error) {
+                        set(state => {
+                            state.appliedJobIds = state.appliedJobIds.filter(id => id !== jobId);
+                            state.error = 'Failed to save application. Please try again.';
+                        });
+                    }
                 }
             }
         })),
@@ -153,7 +176,18 @@ export const useJobStore = create<JobState>()(
             partialize: (state) => ({
                 page: state.page,
                 history: state.history,
-            })
+                appliedJobIds: state.appliedJobIds
+            }),
+            onRehydrateStorage: () => (state) => {
+                state?.actions.fetchJobs();
+                if (typeof window !== 'undefined') {
+                    window.addEventListener('storage', (event) => {
+                        if (event.key === 'job-store') {
+                            state?.actions.fetchJobs();
+                        }
+                    });
+                }
+            },
         }
     )
 );
