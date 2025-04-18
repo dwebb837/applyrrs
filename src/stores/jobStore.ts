@@ -39,9 +39,9 @@ interface JobState {
     history: string[];
     appliedJobIds: string[];
     actions: {
-        fetchJobs: () => Promise<void>;
+        fetchJobs: (page?: number) => Promise<void>;
         setPage: (page: number) => void;
-        selectJob: (job: Job) => void;
+        selectJob: (job: Job | null) => void;
         navigateHistory: (direction: 'back' | 'forward') => void;
         applyToJob: (jobId: string) => Promise<void>;
     };
@@ -62,14 +62,15 @@ export const useJobStore = create<JobState>()(
             appliedJobIds: [],
 
             actions: {
-                fetchJobs: async () => {
-                    const currentPage = get().page;
-                    set(state => {
-                        state.loading = true;
-                        state.error = '';
-                    });
-
+                fetchJobs: async (page?: number) => {
+                    const currentPage = page ?? get().page;
                     try {
+                        set(state => {
+                            state.loading = true;
+                            state.error = '';
+                            state.jobs = [];
+                        });
+
                         const query = encodeURIComponent(JSON.stringify({
                             seniorityFilters: [],
                             locationFilters: ['United+States'],
@@ -104,14 +105,15 @@ export const useJobStore = create<JobState>()(
                         );
 
                         set(state => {
-                            state.jobs = response.data.jobOpenings;
+                            state.jobs = structuredClone(response.data.jobOpenings);
                             state.totalPages = Math.ceil(response.data.totalCount / ITEMS_PER_PAGE);
                             state.loading = false;
+                            state.selectedJob = null;
                         });
                     } catch (error) {
                         set(state => {
-                            state.error = 'Failed to load jobs.';
                             state.loading = false;
+                            state.error = 'Failed to load jobs. Please try again.';
                         });
                     }
                 },
@@ -121,15 +123,21 @@ export const useJobStore = create<JobState>()(
                         state.page = page;
                         state.history = [];
                     });
-                    get().actions.fetchJobs();
+                    get().actions.fetchJobs(page);
                 },
 
                 selectJob: (job) => {
+                    if (!job) {
+                        set(state => {
+                            state.selectedJob = null;
+                        });
+                        return;
+                    }
+
                     set(state => {
-                        state.selectedJob = job;
+                        state.selectedJob = structuredClone(job);
                         if (!state.history.includes(job.id)) {
-                            state.history.push(job.id);
-                            if (state.history.length > 50) state.history.shift();
+                            state.history = [...state.history.slice(-49), job.id];
                         }
                     });
                 },
@@ -144,7 +152,8 @@ export const useJobStore = create<JobState>()(
 
                         if (newIndex >= 0 && newIndex < state.history.length) {
                             const newJobId = state.history[newIndex];
-                            state.selectedJob = state.jobs.find(j => j.id === newJobId) || null;
+                            const job = state.jobs.find(j => j.id === newJobId);
+                            state.selectedJob = job ? structuredClone(job) : null;
                         }
                     });
                 },
@@ -153,7 +162,7 @@ export const useJobStore = create<JobState>()(
                     try {
                         set(state => {
                             if (!state.appliedJobIds.includes(jobId)) {
-                                state.appliedJobIds.push(jobId);
+                                state.appliedJobIds = [...state.appliedJobIds, jobId];
                             }
                         });
 
@@ -178,12 +187,15 @@ export const useJobStore = create<JobState>()(
                 history: state.history,
                 appliedJobIds: state.appliedJobIds
             }),
-            onRehydrateStorage: () => (state) => {
-                state?.actions.fetchJobs();
-                if (typeof window !== 'undefined') {
+            onRehydrateStorage: () => async (state) => {
+                if (state) {
+                    setTimeout(async () => {
+                        await state.actions.fetchJobs(state.page);
+                    }, 100);
+
                     window.addEventListener('storage', (event) => {
                         if (event.key === 'job-store') {
-                            state?.actions.fetchJobs();
+                            state.actions.fetchJobs(state.page);
                         }
                     });
                 }
@@ -191,3 +203,12 @@ export const useJobStore = create<JobState>()(
         }
     )
 );
+
+export const useJobs = () => useJobStore(store => store.jobs);
+export const useCurrentPage = () => useJobStore(store => store.page);
+export const useTotalPages = () => useJobStore(store => store.totalPages);
+export const useSelectedJob = () => useJobStore(store => store.selectedJob);
+export const useLoadingState = () => useJobStore(store => store.loading);
+export const useErrorState = () => useJobStore(store => store.error);
+export const useAppliedJobs = () => useJobStore(store => store.appliedJobIds);
+export const useJobActions = () => useJobStore(store => store.actions);
