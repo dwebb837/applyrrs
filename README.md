@@ -18,3 +18,39 @@
 ⠀⠀⠀⠀⠀• WebSocket for new job notifications
 ⠀⠀⠀⠀⠀• Shared application status indicators
 
+## Features
+
+- **Job Browsing**: View software developer jobs with key details
+- **Instant Details**: Click any listing to see full job description
+- **Smart Pagination**: Navigate through job listings seamlessly
+- **Quick Apply**: One-click access to application pages
+- **Real-time Feedback**: Clear loading states and error handling
+- **Responsive Design**: Works on desktop and mobile devices
+
+## 🛠 Tech Stack
+
+**Frontend:**
+- React (v18+) - UI framework
+- TypeScript - Type safety
+- styled-components - CSS-in-JS styling
+- Axios - HTTP client
+
+## Setup
+1. Prerequisites
+- Node.js v18+ (v20)
+- npm v9+
+
+2. Server Setup
+```
+cd backend-server
+npm install
+node server.js
+```
+
+3. Client Setup
+```
+npm install
+cp .env.example .env
+# Set API base URL in .env
+npm run dev
+```
