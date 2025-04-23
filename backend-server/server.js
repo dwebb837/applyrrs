@@ -13,7 +13,6 @@ app.use(express.json());
 app.get('/api/jobs', async (req, res) => {
     try {
         const query = req.query.q; // Pass query parameters directly
-        console.log(`https://www.remoterocketship.com/api/fetch_job_openings?q=${query}`);
         const response = await axios.get(`https://www.remoterocketship.com/api/fetch_job_openings?q=${query}`, {
             headers: {
                 'User-Agent': 'PostmanRuntime/7.37.3',
@@ -32,7 +31,6 @@ app.get('/api/jobs', async (req, res) => {
 app.post('/api/applications', async (req, res) => {
     try {
         await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Application received:', req.body);
         res.json({ success: true });
     } catch (error) {
         console.error('Application failed:', error);
